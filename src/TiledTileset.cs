@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Xml;
@@ -19,6 +20,8 @@ namespace TiledCS
         /// The tileset name
         /// </summary>
         public string Name { get; set; }
+        public ObjectAlignment ObjectAlignment { get; private set; }
+
         /// <summary>
         /// The tile width in pixels
         /// </summary>
@@ -90,12 +93,19 @@ namespace TiledCS
                 throw new TiledException($"{path} not found");
             }
             
-            if (path.EndsWith(".tsx")) { 
+            if (!path.EndsWith(".tsx")) { 
                 throw new TiledException("Unsupported file format");
             }
 
             var content = File.ReadAllText(path);
             ParseXml(content);
+        }
+
+        public TiledTileset(Stream resourceStream)
+        {
+            var streamReader = new StreamReader(resourceStream);
+            var text = streamReader.ReadToEnd();
+            ParseXml(text);
         }
 
         /// <summary>
@@ -118,6 +128,9 @@ namespace TiledCS
 
                 TiledVersion = nodeTileset.Attributes["tiledversion"].Value;
                 Name = nodeTileset.Attributes["name"]?.Value;
+
+                ObjectAlignment = ToObjectAlignment(nodeTileset.Attributes["objectalignment"]?.Value);
+                
                 TileWidth = int.Parse(nodeTileset.Attributes["tilewidth"].Value);
                 TileHeight = int.Parse(nodeTileset.Attributes["tileheight"].Value);
                 TileCount = int.Parse(nodeTileset.Attributes["tilecount"].Value);
@@ -140,12 +153,29 @@ namespace TiledCS
                 }
 
                 Tiles = ParseTiles(nodesTile);
-                Properties = ParseProperties(nodesProperty).ToArray();
+                Properties = Parser.ParseProperties(nodesProperty).ToArray();
                 Terrains = ParseTerrains(nodesTerrain);
             }
             catch (Exception ex)
             {
                 throw new TiledException("Unable to parse xml data, make sure the xml data represents a valid Tiled tileset", ex);
+            }
+        }
+
+        private ObjectAlignment ToObjectAlignment(string value)
+        {
+            switch (value?.ToLowerInvariant())
+            {
+                case "topleft": return ObjectAlignment.TopLeft;
+                case "top": return ObjectAlignment.Top;
+                case "topright": return ObjectAlignment.TopRight;
+                case "center": return ObjectAlignment.Centre;
+                case "centerleft": return ObjectAlignment.CentreLeft;
+                case "centerright": return ObjectAlignment.CentreRight;
+                case "bottom": return ObjectAlignment.Bottom;
+                case "bottomleft": return ObjectAlignment.BottomLeft;
+                case "bottomright": return ObjectAlignment.BottomRight;
+                default: return ObjectAlignment.Unspecified;
             }
         }
 
@@ -165,29 +195,6 @@ namespace TiledCS
             return result;
         }
 
-        private IEnumerable<TiledProperty> ParseProperties(XmlNodeList nodeList)
-        {
-            var result = new List<TiledProperty>(nodeList.Count);
-
-            foreach (XmlNode node in nodeList)
-            {
-                var name = node.Attributes["name"].Value;
-                var type = node.Attributes["type"]?.Value;
-                var value = node.Attributes["value"]?.Value;
-
-                if (value == null && node.InnerText != null)
-                {
-                    value = node.InnerText;
-                }
-
-                var property = new TiledProperty(name, type, value);
-
-                result.Add(property);
-            }
-
-            return result;
-        }
-
         private TiledTile[] ParseTiles(XmlNodeList nodeList)
         {
             var result = new List<TiledTile>(nodeList.Count);
@@ -196,14 +203,24 @@ namespace TiledCS
             {
                 var nodesProperty = node.SelectNodes("properties/property");
                 var nodesAnimation = node.SelectNodes("animation/frame");
+                var objectNodes = node.SelectNodes("objectgroup/object");
                 var nodeImage = node.SelectSingleNode("image");
+
+                var tileId = int.Parse(node.Attributes["id"].Value);
+
+                if (tileId == 0)
+                {
+                    //Debugger.Break();
+                }
 
                 var tile = new TiledTile()
                 {
-                    Id = int.Parse(node.Attributes["id"].Value),
+                    Id = tileId,
                     Terrain = node.Attributes["terrain"]?.Value.Split(',').AsIntArray(),
-                    Animations = ParseAnimations(nodesAnimation),
-                    Properties = ParseProperties(nodesProperty)
+                    AnimationFrames = ParseAnimations(nodesAnimation),
+                    Properties = Parser.ParseProperties(nodesProperty),
+                    Objects = Parser.ParseObjects(objectNodes, new TiledMapTileset[0]),
+                    Type = node.Attributes["type"]?.Value
                 };
                 
                 if (nodeImage != null)
@@ -238,5 +255,19 @@ namespace TiledCS
 
             return result;
         }
+    }
+
+    public enum ObjectAlignment
+    {
+        TopLeft,
+        Top,
+        TopRight,
+        Centre,
+        CentreLeft,
+        CentreRight,
+        Bottom,
+        BottomLeft,
+        BottomRight,
+        Unspecified
     }
 }

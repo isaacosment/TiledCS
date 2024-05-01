@@ -24,10 +24,17 @@ namespace TiledCS
         /// <summary>
         /// An array of tile animations. Is null if none were defined. 
         /// </summary>
-        public IEnumerable<TiledTileAnimation> Animations { get; set; }
+        public IEnumerable<TiledTileAnimation> AnimationFrames { get; set; }
+
+        /// <summary>
+        /// Objects defined on this tile. Null if none were defined.
+        /// </summary>
+        public IEnumerable<TiledObject> Objects { get; set; }
         /// <summary>
         /// The individual tile image
         /// </summary>
         public TiledTileImage? Image { get; set; }
+
+        public string Type { get; set; }
     }
 }

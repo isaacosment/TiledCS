@@ -8,7 +8,18 @@ namespace TiledCS
     /// </summary>
     public struct TiledLayer
     {
-        public TiledLayer(int id, string name, int width, int height, LayerType type, bool visible, int[] data, byte[] dataRotationFlags, IEnumerable<TiledObject> objects)
+        public TiledLayer(
+            int id, 
+            string name, 
+            int width, 
+            int height, 
+            LayerType type, 
+            bool visible,
+            int[] data, 
+            byte[] dataRotationFlags, 
+            IEnumerable<TiledObject> objects,
+            IEnumerable<TiledProperty> properties
+        )
         {
             Id = id;
             Name = name;
@@ -19,6 +30,7 @@ namespace TiledCS
             Data = data;
             DataRotationFlags = dataRotationFlags;
             Objects = objects;
+            Properties = properties;
         }
 
         /// <summary>
@@ -61,5 +73,7 @@ namespace TiledCS
         /// The list of objects in case of an objectgroup layer. Is null when the layer has no objects.
         /// </summary>
         public IEnumerable<TiledObject> Objects { get; }
+
+        public IEnumerable<TiledProperty> Properties { get; }
     }
 }
